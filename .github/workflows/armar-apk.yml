@@ -18,8 +18,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generar Gradle y compilar APK
+      - name: Configurar Gradle 8.5
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
 
       - name: Compilar APK
         run: gradle assembleDebug
@@ -29,4 +31,3 @@ jobs:
         with:
           name: Emma-Data-Driver-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          
