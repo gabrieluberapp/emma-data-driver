@@ -224,3 +224,30 @@ fun PantallaInicio(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("GANANCIA LIMPIA HOY", color = Color(0xFF94A3B8), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+
+                        Text("Meta Semanal: $1M", color = cianEmma, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+}
+Text("$${netoHoy.toInt()}", color = verdeNeon, fontWeight = FontWeight.Black, fontSize = 36.sp)
+Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+Column {
+Text("Facturado Bruto", color = Color(0xFF94A3B8), fontSize = 11.sp)
+Text("$${facturadoHoy.toInt()}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+}
+Column(horizontalAlignment = Alignment.End) {
+Text("Gastos del Día", color = Color(0xFF94A3B8), fontSize = 11.sp)
+Text("-$${gastosHoy.toInt()}", color = coralAlerta, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+}
+}
+Button(
+onClick = onCargarGastoRapido,
+modifier = Modifier.fillMaxWidth().height(46.dp),
+shape = RoundedCornerShape(12.dp),
+colors = ButtonDefaults.buttonColors(containerColor = cianEmma)
+) {
+Text("+ CARGAR GASTO (GNC / NAFTA / OTROS)", color = fondoNoche, fontWeight = FontWeight.Black, fontSize = 13.sp)
+}
+}
+}
+}
+}
+}
