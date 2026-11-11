@@ -5,11 +5,11 @@ workflows:
     environment:
       java: 17
     scripts:
-      - name: Instalar Gradle 8.5 y compilar APK
+      - name: Compilar APK
         script: |
-          wget -q https://gradle.org
-          unzip -q gradle-8.5-bin.zip
-          ./gradle-8.5/bin/gradle assembleDebug
+          gradle assembleDebug
     artifacts:
       - app/build/outputs/apk/debug/app-debug.apk
+      
+
       
