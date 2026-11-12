@@ -1,15 +1,14 @@
-import android.content.Intent
-import android.provider.Settings
-import com.emmadatadriver.app.lector.LectorViajesService
-
 package com.emmadatadriver.app
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import com.emmadatadriver.app.energia.GestorBateria
+import com.emmadatadriver.app.lector.LectorViajesService
 import com.emmadatadriver.app.modelo.ConfiguracionMeta
 import com.emmadatadriver.app.navegacion.GestorMapaInteligente
 import com.emmadatadriver.app.navegacion.ViajeAceptado
@@ -73,14 +72,16 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     vozSilenciada = vozSilenciada,
                     lectorAppsActivo = lectorAppsActivo,
                     modoAhorroActivo = modoAhorroActivo,
-                    onAlternarSilencio = { vozSilenciada = !vozSilenciada },
                     onAlternarSilencio = {
-    vozSilenciada = !vozSilenciada
-    LectorViajesService.vozSilenciada = vozSilenciada
-},
-                    
+                        vozSilenciada = !vozSilenciada
+                        LectorViajesService.vozSilenciada = vozSilenciada
+                    },
                     onAlternarLectorApps = {
                         lectorAppsActivo = !lectorAppsActivo
+                        LectorViajesService.lectorEncendido = lectorAppsActivo
+                        if (lectorAppsActivo) {
+                            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        }
                         if (!vozSilenciada) {
                             val estado = if (lectorAppsActivo) "Lector de Uber, DiDi y Cabify encendido" else "Lector de aplicaciones apagado"
                             hablar(estado)
