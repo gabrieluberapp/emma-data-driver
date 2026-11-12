@@ -25,9 +25,10 @@ fun PantallaInicio(
     facturadoHoy: Double,
     gastosHoy: Double,
     vozSilenciada: Boolean,
+    lectorAppsActivo: Boolean,
     modoAhorroActivo: Boolean,
     onAlternarSilencio: () -> Unit,
-    onAlternarAhorro: () -> Unit,
+    onAlternarLectorApps: () -> Unit,
     onCambiarVehiculo: (String) -> Unit,
     onActivarEmma: () -> Unit,
     onCargarGastoRapido: () -> Unit,
@@ -118,28 +119,33 @@ fun PantallaInicio(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Cabecera con Botón ON/OFF del Lector de Apps (Uber / DiDi / Cabify) y Silencio
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("EMMA DATA DRIVER", color = cianEmma, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    Text("📍 ${config.provincia} • ${config.zona}", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                    Text("EMMA DATA DRIVER", color = cianEmma, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        if (modoAhorroActivo) "🔋 Ahorro 50% • ${config.zona}" else "📍 ${config.provincia} • ${config.zona}",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp
+                    )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilledTonalButton(
-                        onClick = onAlternarAhorro,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (modoAhorroActivo) ambarSolar else tarjetaOscura
+                    Button(
+                        onClick = onAlternarLectorApps,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (lectorAppsActivo) verdeNeon else Color(0xFF1E293B)
                         ),
-                        contentPadding = PaddingValues(horizontal = 8.dp)
+                        contentPadding = PaddingValues(horizontal = 10.dp)
                     ) {
                         Text(
-                            if (modoAhorroActivo) "🔋 50%" else "🔋 ON",
-                            color = if (modoAhorroActivo) fondoNoche else Color.White,
-                            fontWeight = FontWeight.Bold,
+                            if (lectorAppsActivo) "📡 LECTOR ON" else "📡 LECTOR OFF",
+                            color = if (lectorAppsActivo) fondoNoche else Color.White,
+                            fontWeight = FontWeight.Black,
                             fontSize = 11.sp
                         )
                     }
@@ -154,6 +160,24 @@ fun PantallaInicio(
                         Text(if (vozSilenciada) "🔇" else "🔊", fontSize = 15.sp)
                     }
                 }
+            }
+
+            // Franja de estado de plataformas vinculadas (Uber, DiDi, Cabify)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(tarjetaOscura)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (lectorAppsActivo) "🟢 Escuchando: Uber • DiDi • Cabify" else "⚪ Lector pausado (Uber • DiDi • Cabify)",
+                    color = if (lectorAppsActivo) cianEmma else Color(0xFF94A3B8),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
             }
 
             Row(
@@ -207,25 +231,23 @@ fun PantallaInicio(
                         trackColor = Color.Black.copy(alpha = 0.25f)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "Viajes: $viajesHoy/${config.viajesDiariosObjetivo} • Meta: $${config.metaNetaDiaria.toInt()} netos",
-                        color = fondoNoche,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Card(
-                colors = CardDefaults.cardColors(containerColor = tarjetaOscura),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth().border(1.dp, colorBorde.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("GANANCIA LIMPIA HOY", color = Color(0xFF94A3B8), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-
-                        Text("Meta Semanal: $1M", color = cianEmma, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+Text(
+"Viajes: $viajesHoy/${config.viajesDiariosObjetivo} • Meta: $${config.metaNetaDiaria.toInt()} netos",
+color = fondoNoche,
+fontWeight = FontWeight.Bold,
+fontSize = 12.sp
+)
+}
+}
+Card(
+colors = CardDefaults.cardColors(containerColor = tarjetaOscura),
+shape = RoundedCornerShape(18.dp),
+modifier = Modifier.fillMaxWidth().border(1.dp, colorBorde.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+) {
+Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+Text("GANANCIA LIMPIA HOY", color = Color(0xFF94A3B8), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+Text("Meta Semanal: $1M", color = cianEmma, fontWeight = FontWeight.Bold, fontSize = 12.sp)
 }
 Text("$${netoHoy.toInt()}", color = verdeNeon, fontWeight = FontWeight.Black, fontSize = 36.sp)
 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
