@@ -1,3 +1,7 @@
+import android.content.Intent
+import android.provider.Settings
+import com.emmadatadriver.app.lector.LectorViajesService
+
 package com.emmadatadriver.app
 
 import android.os.Bundle
@@ -70,6 +74,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     lectorAppsActivo = lectorAppsActivo,
                     modoAhorroActivo = modoAhorroActivo,
                     onAlternarSilencio = { vozSilenciada = !vozSilenciada },
+                    onAlternarSilencio = {
+    vozSilenciada = !vozSilenciada
+    LectorViajesService.vozSilenciada = vozSilenciada
+},
+                    
                     onAlternarLectorApps = {
                         lectorAppsActivo = !lectorAppsActivo
                         if (!vozSilenciada) {
