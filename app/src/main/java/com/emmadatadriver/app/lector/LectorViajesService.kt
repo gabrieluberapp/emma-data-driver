@@ -1,28 +1,120 @@
-package com.emmadatadriver.app.lector
+package com.emmadatadriver.app
 
-import android.accessibilityservice.AccessibilityService
+import android.content.Intent
+import android.os.Bundle
+import android.provider.Settings
 import android.speech.tts.TextToSpeech
-import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.Toast
+import android.text.TextUtils
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.*
+import com.emmadatadriver.app.energia.GestorBateria
+import com.emmadatadriver.app.lector.LectorViajesService
 import com.emmadatadriver.app.modelo.ConfiguracionMeta
+import com.emmadatadriver.app.navegacion.GestorMapaInteligente
+import com.emmadatadriver.app.navegacion.ViajeAceptado
+import com.emmadatadriver.app.ui.PantallaInicio
+import com.emmadatadriver.app.ui.PantallaMapa
 import java.util.Locale
 
-class LectorViajesService : AccessibilityService(), TextToSpeech.OnInitListener {
+class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
-    private val config = ConfiguracionMeta()
-    private var ultimaLecturaTiempo: Long = 0L
+    private lateinit var gestorBateria: GestorBateria
+    private val gestorMapa = GestorMapaInteligente()
 
-    companion object {
-        var lectorEncendido: Boolean = true
-        var vozSilenciada: Boolean = false
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        tts = TextToSpeech(this, this)
+        gestorBateria = GestorBateria(this)
+
+        setContent {
+            var pantallaActual by remember { mutableStateOf("INICIO") }
+            var config by remember { mutableStateOf(ConfiguracionMeta()) }
+            var viajesHoy by remember { mutableIntStateOf(0) }
+            var rachaVerdes by remember { mutableIntStateOf(0) }
+            var facturadoHoy by remember { mutableDoubleStateOf(0.0) }
+            var gastosHoy by remember { mutableDoubleStateOf(0.0) }
+            var vozSilenciada by remember { mutableStateOf(false) }
+            var lectorAppsActivo by remember { mutableStateOf(true) }
+            var modoAhorroActivo by remember { mutableStateOf(false) }
+            var evitarTierra by remember { mutableStateOf(true) }
+            var viajeActual by remember { mutableStateOf<ViajeAceptado?>(null) }
+            val puntosMapa = remember { mutableStateListOf(*gestorMapa.puntosActivos.toTypedArray()) }
+
+            LaunchedEffect(Unit) {
+                gestorBateria.verificarYActivarAhorro(true, this@MainActivity) { activo ->
+                    modoAhorroActivo = activo
+                }
+            }
+
+            if (pantallaActual == "MAPA") {
+                PantallaMapa(
+                    viajeActual = viajeActual,
+                    puntosMapa = puntosMapa,
+                    evitarTierra = evitarTierra,
+                    onAlternarEvitarTierra = { evitarTierra = !evitarTierra },
+                    onSimularReporteVoz = { comando ->
+                        gestorMapa.reportarPorVozEnMapa(comando, -34.7700, -58.3500) { respuesta ->
+                            if (!vozSilenciada) hablar(respuesta)
+                        }
+                        puntosMapa.clear()
+                        puntosMapa.addAll(gestorMapa.puntosActivos)
+                    },
+                    onVolverTablero = { pantallaActual = "INICIO" }
+                )
+            } else {
+                PantallaInicio(
+                    config = config,
+                    viajesHoy = viajesHoy,
+                    rachaViajesVerdes = rachaVerdes,
+                    facturadoHoy = facturadoHoy,
+                    gastosHoy = gastosHoy,
+                    vozSilenciada = vozSilenciada,
+                    lectorAppsActivo = lectorAppsActivo,
+                    modoAhorroActivo = modoAhorroActivo,
+                    onAlternarSilencio = {
+                        vozSilenciada = !vozSilenciada
+                        LectorViajesService.vozSilenciada = vozSilenciada
+                    },
+                    onAlternarLectorApps = {
+                        lectorAppsActivo = !lectorAppsActivo
+                        LectorViajesService.lectorEncendido = lectorAppsActivo
+                        if (lectorAppsActivo && !estaServicioAccesibilidadActivo()) {
+                            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        }
+                        if (!vozSilenciada) {
+                            val estado = if (lectorAppsActivo) "Lector de Uber, DiDi y Cabify encendido" else "Lector de aplicaciones apagado"
+                            hablar(estado)
+                        }
+                    },
+                    onCambiarVehiculo = { nuevoModo -> config = config.copy(modoVehiculo = nuevoModo) },
+                    onActivarEmma = {
+                        if (!vozSilenciada) hablar("Emma navegación lista")
+                    },
+                    onCargarGastoRapido = { gastosHoy += 14000.0 },
+                    onAbrirMapa = { pantallaActual = "MAPA" },
+                    onAbrirChat = {},
+                    onAbrirChecklist = {}
+                )
+            }
+        }
     }
 
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-        tts = TextToSpeech(this, this)
-        Toast.makeText(this, "📡 Emma Lector Activo", Toast.LENGTH_SHORT).show()
+    private fun estaServicioAccesibilidadActivo(): Boolean {
+        val servicioEsperado = "$packageName/${LectorViajesService::class.java.canonicalName}"
+        val activos = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(activos)
+        while (splitter.hasNext()) {
+            if (splitter.next().equals(servicioEsperado, ignoreCase = true)) {
+                return true
+            }
+        }
+        return false
     }
 
     override fun onInit(status: Int) {
@@ -31,92 +123,9 @@ class LectorViajesService : AccessibilityService(), TextToSpeech.OnInitListener 
         }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (!lectorEncendido || event == null) return
-
-        val paquete = event.packageName?.toString() ?: return
-        val plataforma = when {
-            paquete.contains("uber") -> "Uber"
-            paquete.contains("didi") -> "DiDi"
-            paquete.contains("cabify") -> "Cabify"
-            else -> return
-        }
-
-        val ahora = System.currentTimeMillis()
-        if (ahora - ultimaLecturaTiempo < 3500) return
-
-        val textosPantalla = mutableListOf<String>()
-
-        // 1. Leer ventana activa principal
-        rootInActiveWindow?.let { extraerTextos(it, textosPantalla) }
-
-        // 2. Leer tarjetas flotantes superpuestas (carteles de viaje de Uber/DiDi/Cabify)
-        windows?.forEach { ventana ->
-            ventana.root?.let { extraerTextos(it, textosPantalla) }
-        }
-
-        if (textosPantalla.isNotEmpty()) {
-            analizarOferta(plataforma, textosPantalla)
-        }
+    private fun hablar(texto: String) {
+        tts?.speak(texto, TextToSpeech.QUEUE_FLUSH, null, null)
     }
-
-    private fun extraerTextos(nodo: AccessibilityNodeInfo?, lista: MutableList<String>) {
-        if (nodo == null) return
-        nodo.text?.toString()?.let { if (it.isNotBlank()) lista.add(it) }
-        nodo.contentDescription?.toString()?.let { if (it.isNotBlank()) lista.add(it) }
-        for (i in 0 until nodo.childCount) {
-            extraerTextos(nodo.getChild(i), lista)
-        }
-    }
-
-    private fun analizarOferta(plataforma: String, textos: List<String>) {
-        var tarifaDetectada = 0.0
-        var kmTotales = 0.0
-
-        val regexDinero = Regex("""\$\s?([0-9.,]+)""")
-        val regexKm = Regex("""([0-9.,]+)\s?km""", RegexOption.IGNORE_CASE)
-
-        for (texto in textos) {
-            regexDinero.findAll(texto).forEach { match ->
-                val numeroCrudo = match.groupValues.getOrNull(1) ?: ""
-                val limpio = numeroCrudo.replace(".", "").replace(",", ".")
-                val valor = limpio.toDoubleOrNull() ?: 0.0
-                if (valor > tarifaDetectada && valor < 500000.0) {
-                    tarifaDetectada = valor
-                }
-            }
-
-            regexKm.findAll(texto).forEach { match ->
-                val numeroCrudo = match.groupValues.getOrNull(1) ?: ""
-                val limpio = numeroCrudo.replace(",", ".")
-                val km = limpio.toDoubleOrNull() ?: 0.0
-                if (km in 0.2..150.0) {
-                    kmTotales += km
-                }
-            }
-        }
-
-        if (tarifaDetectada >= 800.0 && kmTotales >= 0.3) {
-            ultimaLecturaTiempo = System.currentTimeMillis()
-            val valorPorKm = tarifaDetectada / kmTotales
-
-            val (emoji, veredicto) = when {
-                valorPorKm >= config.promedioPorKm && tarifaDetectada >= config.promedioPorViaje ->
-                    Pair("🟢", "Viaje rentable de $plataforma. ${tarifaDetectada.toInt()} pesos por ${"%.1f".format(kmTotales)} kilómetros.")
-                valorPorKm >= config.promedioPorKm * 0.85 ->
-                    Pair("🟡", "Viaje justo de $plataforma. ${tarifaDetectada.toInt()} pesos por ${"%.1f".format(kmTotales)} kilómetros.")
-                else ->
-                    Pair("🔴", "Viaje no rentable de $plataforma. ${tarifaDetectada.toInt()} pesos por ${"%.1f".format(kmTotales)} kilómetros.")
-            }
-
-            Toast.makeText(this, "$emoji $veredicto", Toast.LENGTH_LONG).show()
-            if (!vozSilenciada) {
-                tts?.speak(veredicto, TextToSpeech.QUEUE_FLUSH, null, null)
-            }
-        }
-    }
-
-    override fun onInterrupt() {}
 
     override fun onDestroy() {
         tts?.stop()
